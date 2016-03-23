@@ -7,6 +7,7 @@ import groovyx.net.http.Method
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.DependencyResolveDetails
+import org.gradle.api.internal.artifacts.DefaultModuleIdentifier;
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier
 import org.gradle.api.internal.artifacts.repositories.ResolutionAwareRepository
 import org.gradle.api.logging.Logging
@@ -44,7 +45,9 @@ class VersionResolver implements Action<DependencyResolveDetails>{
         this.usedVersions = [:]
         this.computedManifest = ['modules': usedVersions ]
 
-        project?.getParent()?.subprojects?.each { siblingProject.add("${it.group}:${it.name}"); }
+        project?.getParent()?.subprojects?.each {
+            siblingProject.add(DefaultModuleIdentifier.newId(it.group, it.name))
+        }
 
     }
 
@@ -144,23 +147,28 @@ class VersionResolver implements Action<DependencyResolveDetails>{
         def rname = requested.name
         def isExplicit = isExplicitlyVersioned(group,rname)
 
+        def moduleId = DefaultModuleIdentifier.newId(group, rname)
+
         // Siblings are always versioned together.
-        if(siblingProject.contains("${group}:${rname}"))
+        if(siblingProject.contains(moduleId))
             return ver
 
-
-        //We don't want to set versions for dependencies explicitly set in this project.
-        if(ver != 'auto' && isExplicit)
-            return ver
+        // Allow forcing versions from the manifest over specific versions
+        // or even transitive versions
+        if (options && !options.forceManifestVersions) {
+            //We don't want to set versions for dependencies explicitly set in this project.
+            if(ver != 'auto' && isExplicit)
+                return ver
+        }
 
         if( manifestFile || options && options.manifest && options.manifest.url)
         {
             def manifest = getManifest()
             if(manifest == null)
                 throw new RuntimeException("Could not resolve manifest location $options.manifest.url")
-            def name = "${group}:${rname}"
-            ver =   manifest.modules[name] ?: ver
-            logger.debug("Resolved version of $name to $ver")
+
+            ver =   manifest.modules[moduleId] ?: manifest.groups[group] ?: ver
+            logger.debug("Resolved version of $moduleId to $ver")
         }
 
         ver
@@ -230,8 +238,23 @@ class VersionResolver implements Action<DependencyResolveDetails>{
         logger.debug(text)
 
         Yaml yaml = new Yaml()
-        def manifest =  yaml.load(text)
-        manifest
+        def manifest = yaml.load(text)
+        def modules = [ : ]
+        def groups = [ : ]
+
+        manifest.modules?.each { k,v ->
+            def parts = k.split(':')
+            if (parts.length != 2)
+                throw new RuntimeException("Invalid module ID: $k")
+            modules[DefaultModuleIdentifier.newId(parts[0], parts[1])] = v
+        }
+
+        manifest.groups?.each { k,v ->
+            groups[k] = v
+        }
+
+        def digestedManifest = [ modules: modules, groups: groups ]
+        digestedManifest
     }
 
     def getComputedVersionManifest()

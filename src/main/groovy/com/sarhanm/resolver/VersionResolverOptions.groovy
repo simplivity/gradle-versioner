@@ -13,6 +13,8 @@ class VersionResolverOptions {
     def VersionManifestOption manifest = new VersionManifestOption()
 
     def boolean outputComputedManifest = false
+
+    def boolean forceManifestVersions = false
 }
 
 class VersionManifestOption

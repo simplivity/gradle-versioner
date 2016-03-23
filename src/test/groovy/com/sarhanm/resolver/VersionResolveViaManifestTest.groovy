@@ -52,6 +52,63 @@ class VersionResolveViaManifestTest {
     }
 
     @Test
+    void testManifestVersionUsingGroups() {
+        def file = new File("src/test/resources/versions-using-groups.yaml")
+
+        def apiSelectorMock = new MockFor(ModuleVersionSelector)
+        apiSelectorMock.demand.getVersion(1) { params -> 'auto' }
+        apiSelectorMock.demand.getGroup { params -> 'com.coinfling' }
+        apiSelectorMock.demand.getName { params -> 'auth-service-api' }
+
+        def apiDetailsMock = new MockFor(DependencyResolveDetails)
+        apiDetailsMock.demand.getRequested(1) { params -> apiSelectorMock.proxyInstance() }
+
+        def implSelectorMock = new MockFor(ModuleVersionSelector)
+        implSelectorMock.demand.getVersion(1) { params -> 'auto' }
+        implSelectorMock.demand.getGroup { params -> 'com.coinfling' }
+        implSelectorMock.demand.getName { params -> 'auth-service-impl' }
+
+        def implDetailsMock = new MockFor(DependencyResolveDetails)
+        implDetailsMock.demand.getRequested(1) { params -> implSelectorMock.proxyInstance() }
+
+        def resolver = new VersionResolver(null, null,file)
+        def ver = resolver.resolveVersionFromManifest(apiDetailsMock.proxyInstance())
+        assert ver == "1.0-SNAPSHOT"
+        ver = resolver.resolveVersionFromManifest(implDetailsMock.proxyInstance())
+        assert ver == "1.0-SNAPSHOT"
+
+    }
+
+
+    @Test
+    void testManifestVersionModuleWinsOverGroup() {
+        def file = new File("src/test/resources/versions-with-both.yaml")
+
+        def apiSelectorMock = new MockFor(ModuleVersionSelector)
+        apiSelectorMock.demand.getVersion(1) { params -> 'auto' }
+        apiSelectorMock.demand.getGroup { params -> 'com.coinfling' }
+        apiSelectorMock.demand.getName { params -> 'auth-service-api' }
+
+        def apiDetailsMock = new MockFor(DependencyResolveDetails)
+        apiDetailsMock.demand.getRequested(1) { params -> apiSelectorMock.proxyInstance() }
+
+        def implSelectorMock = new MockFor(ModuleVersionSelector)
+        implSelectorMock.demand.getVersion(1) { params -> 'auto' }
+        implSelectorMock.demand.getGroup { params -> 'com.coinfling' }
+        implSelectorMock.demand.getName { params -> 'auth-service-impl' }
+
+        def implDetailsMock = new MockFor(DependencyResolveDetails)
+        implDetailsMock.demand.getRequested(1) { params -> implSelectorMock.proxyInstance() }
+
+        def resolver = new VersionResolver(null, null,file)
+        def ver = resolver.resolveVersionFromManifest(apiDetailsMock.proxyInstance())
+        assert ver == "1.0-SNAPSHOT"
+        ver = resolver.resolveVersionFromManifest(implDetailsMock.proxyInstance())
+        assert ver == "2.1"
+
+    }
+
+    @Test
     void testManifestVersionMissing()
     {
         def file = new File("src/test/resources/versions.yaml")
@@ -89,6 +146,28 @@ class VersionResolveViaManifestTest {
         def resolver = new VersionResolver(null, options)
         def ver = resolver.resolveVersionFromManifest(detailsMock.proxyInstance())
         assert ver == "1.2.3"
+
+    }
+
+    @Test
+    void testForceManifestVersions()
+    {
+        def file = new File("src/test/resources/versions.yaml")
+
+        def options = getOption(file.toURI().toString())
+        options.forceManifestVersions = true
+
+        def selectorMock = new MockFor(ModuleVersionSelector)
+        selectorMock.demand.getVersion{ params-> '1.2.3'}
+        selectorMock.demand.getGroup{ params -> 'com.coinfling'}
+        selectorMock.demand.getName{ params -> 'auth-service-impl'}
+
+        def detailsMock = new MockFor(DependencyResolveDetails)
+        detailsMock.demand.getRequested{params-> selectorMock.proxyInstance()}
+
+        def resolver = new VersionResolver(null, options)
+        def ver = resolver.resolveVersionFromManifest(detailsMock.proxyInstance())
+        assert ver == "1.0-SNAPSHOT"
 
     }
 

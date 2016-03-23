@@ -1,0 +1,8 @@
+#A manifest that lists group level and module level versions
+#Module versions take effect over the group versions if the
+#requested artifact matches both a module and group version.
+version: 1.0
+modules:
+  'com.coinfling:auth-service-impl': 2.1
+groups:
+  'com.coinfling': 1.0-SNAPSHOT

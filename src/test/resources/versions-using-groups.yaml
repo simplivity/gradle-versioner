@@ -1,0 +1,4 @@
+#A manifest that lists group level versions only
+version: 1.0
+groups:
+  'com.coinfling': 1.0-SNAPSHOT
