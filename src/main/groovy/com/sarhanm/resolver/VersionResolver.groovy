@@ -4,10 +4,12 @@ import groovy.transform.Memoized
 import groovy.transform.Synchronized
 import groovyx.net.http.HTTPBuilder
 import groovyx.net.http.Method
+
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.DependencyResolveDetails
-import org.gradle.api.internal.artifacts.DefaultModuleIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentSelector
+import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier
 import org.gradle.api.internal.artifacts.repositories.ResolutionAwareRepository
 import org.gradle.api.logging.Logging
@@ -16,8 +18,6 @@ import org.gradle.internal.component.model.DefaultDependencyMetaData
 import org.gradle.internal.component.model.DependencyMetaData
 import org.gradle.internal.resolve.result.DefaultBuildableModuleVersionListingResolveResult
 import org.gradle.util.CollectionUtils
-
-//import org.gradle.internal.resolve.result.DefaultBuildableModuleComponentVersionSelectionResolveResult
 import org.yaml.snakeyaml.Yaml
 
 /**
@@ -34,7 +34,6 @@ class VersionResolver implements Action<DependencyResolveDetails>{
     private File manifestFile
     private usedVersions
     private computedManifest
-    private siblingProject = new HashSet();
 
     VersionResolver(Project project,VersionResolverOptions options = null, File manifestFile = null) {
         this.project = project
@@ -44,11 +43,15 @@ class VersionResolver implements Action<DependencyResolveDetails>{
 
         this.usedVersions = [:]
         this.computedManifest = ['modules': usedVersions ]
+    }
 
+    @Memoized
+    Set<DefaultModuleIdentifier> siblingProjects() {
+        def siblingProject = new HashSet()
         project?.getParent()?.subprojects?.each {
             siblingProject.add(DefaultModuleIdentifier.newId(it.group, it.name))
         }
-
+        return siblingProject as Set
     }
 
     @Synchronized
@@ -64,7 +67,6 @@ class VersionResolver implements Action<DependencyResolveDetails>{
 
     @Override
     void execute(DependencyResolveDetails details) {
-
 
         def requested = details.requested
         def requestedVersion = resolveVersionFromManifest(details)
@@ -150,7 +152,7 @@ class VersionResolver implements Action<DependencyResolveDetails>{
         def moduleId = DefaultModuleIdentifier.newId(group, rname)
 
         // Siblings are always versioned together.
-        if(siblingProject.contains(moduleId))
+        if (siblingProjects().contains(moduleId))
             return ver
 
         // Allow forcing versions from the manifest over specific versions
