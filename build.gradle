@@ -33,7 +33,7 @@ versioner{
     omitBranchMetadataOnSolidBranch=true
     solidBranchRegex='.*'
 }
-version = '2.1.35.svt3'
+version = '2.1.35.svt4'
 
 group = 'com.sarhanm'
 
@@ -47,6 +47,22 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.14'
     compile 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
     testCompile 'com.netflix.nebula:nebula-test:4.0.0'
+}
+
+// Need to keep things 1.7 compatible for now...
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+compileJava {
+    sourceCompatibility = 1.7
+    targetCompatibility = 1.7
+    options.encoding = 'UTF-8'
+}
+
+compileGroovy {
+    sourceCompatibility = 1.7
+    targetCompatibility = 1.7
+    options.encoding = 'UTF-8'
 }
 
 apply plugin: 'com.jfrog.bintray'
